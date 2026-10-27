@@ -1,115 +1,163 @@
-const { users } = require('../models/User');
+const { db } = require('../db');
 
 // Retrieve all users
-const retrieveAllUsers = (req, res) => {
-    res.status(200).json({
-        status: 'success',
-        message: 'Users retrieved successfully',
-        results: users.length,
-        data: users
-    });
+const retrieveAllUsers = async (req, res) => {
+    try {
+        query = 'SELECT * FROM USER';
+        const [users] = await db.query(query);
+    
+        return res.status(200).json({
+            status: 'success',
+            results: users.length,
+            data: users
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: 'Database error',
+        });
+    }
 }
 
 // Create a new user
-const createUser = (req, res) => {
-    const { username, password, role } = req.body;
-    if (!username || !password || !role) {
+const createUser = async(req, res) => {
+    const { name, email, role, password } = req.body;
+    if (!name || !email || !role || !password) {
         return res.status(400).json({
-            status: 'fail',
             message: 'Please provide all required fields.'
         });
     }
 
-    const newUser = {
-        id: users.length + 1,
-        username,
-        password,
-        role
-    };
+    // db insertion
+    const query = `
+        INSERT INTO USER (NAME, EMAIL, PASSWORD, ROLE)
+        VALUES ('${name}', '${email}', '${password}', '${role}')
+    `;
 
-    users.push(newUser);
+    try {
+        const [result] = await db.query(query);
 
-    res.status(201).json({
-        status: 'success',
-        message: 'User created successfully',
-        data: newUser
-    });
+        const createdUserQuery = `
+            SELECT * FROM USER WHERE ID = ${result.insertId}
+        `;
+        const [newUser] = await db.query(createdUserQuery);
+        
+        return res.status(201).json({
+            message: 'User created successfully',
+            data: newUser[0]
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: 'Database error',
+        });
+    }
 }
 
 // Retrieve a specific user by ID
-const retrieveUserById = (req, res) => {
+const retrieveUserById = async (req, res) => {
     const id = Number(req.params.id);
 
-    for (let i = 0; i < users.length; i++) {
-        if (users[i].id === id) {
-            return res.status(200).json({
-                status: 'success',
-                data: users[i]
+    const query = `SELECT * FROM USER WHERE ID = ${id}`;
+
+    try {
+        const [users] = await db.query(query);
+
+        if (users.length === 0) {
+            return res.status(404).json({
+                message: 'User not found'
             });
         }
+        return res.status(200).json({
+            status: 'success',
+            data: user
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: 'Database error',
+        });
     }
-
-    return res.status(404).json({
-        status: 'fail',
-        message: 'User not found'
-    });
 }
 
-
-// Update a specific user by ID
-const updateUserById = (req, res) => {
+// Update a specific user by ID partial update
+const updateUserById = async (req, res) => {
     const id = Number(req.params.id);
-    const { username, password, role } = req.body;
+    const { name, email, password, role } = req.body;
 
-    for (let i = 0; i < users.length; i++) {
-        if (users[i].id === id) {
-
-            if (!username || !password || !role) {
-                return res.status(400).json({
-                    status: 'fail',
-                    message: 'Please provide all required fields.'
-                });
-            }
-
-            users[i].username = username;
-            users[i].password = password;
-            users[i].role = role;
-
-            return res.status(200).json({
-                status: 'success',
-                message: 'User updated successfully',
-                data: users[i]
-            });
-        }
+    if (!name && !email && !password && !role) {
+        return res.status(400).json({
+            message: 'Please provide at least one field to update.'
+        });
     }
 
-    return res.status(404).json({
-        status: 'fail',
-        message: 'User not found'
-    });
+    const selectQuery = `SELECT * FROM USER WHERE ID = ${id}`;
+    const [users] = await db.query(selectQuery);
+
+    if (users.length === 0) {
+        return res.status(404).json({
+            message: 'User not found'
+        });
+    }
+
+    const updatedName = name || users[0].NAME;
+    const updatedEmail = email || users[0].EMAIL;
+    const updatedPassword = password || users[0].PASSWORD;
+    const updatedRole = role || users[0].ROLE;
+
+    const query = `
+        UPDATE USER
+        SET NAME = '${updatedName}',
+            EMAIL = '${updatedEmail}',
+            PASSWORD = '${updatedPassword}',
+            ROLE = '${updatedRole}'
+        WHERE ID = ${id}
+    `;
+
+    try {
+        const [result] = await db.query(query);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                message: 'User not found'
+            });
+        }
+
+        const updatedUserQuery = `SELECT * FROM USER WHERE ID = ${id}`;
+        const [updatedUser] = await db.query(updatedUserQuery);
+
+        return res.status(200).json({
+            message: 'User updated successfully',
+            data: updatedUser
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: 'Database error',
+        });
+    }
 }
 
 // Delete a specific user by ID
-const deleteUserById = (req, res) => {
+const deleteUserById = async (req, res) => {
     const id = Number(req.params.id);
 
-    for (let i = 0; i < users.length; i++) {
-        if (users[i].id === id) {
-            users.splice(i, 1); 
+    const query = `DELETE FROM USER WHERE ID = ${id}`;
 
-            return res.status(200).json({
-                status: 'success',
-                message: 'User deleted successfully'
+    try {
+        const [result] = await db.query(query);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                message: 'User not found'
             });
-        }   
+        }
 
-        return res.status(404).json({
-            status: 'fail',
-            message: 'User not found'
+        return res.status(200).json({
+            message: 'User deleted successfully'
         });
-    }       
+    } catch (error) {
+        return res.status(500).json({
+            message: 'Database error',
+        });
+    }
 }
-
 
 module.exports = {
     retrieveAllUsers,
