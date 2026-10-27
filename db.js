@@ -19,8 +19,6 @@ const createUserTable = `
     );
 `;
 
-
-
 module.exports = {
     db,
     createUserTable
