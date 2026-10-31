@@ -1,13 +1,14 @@
+const e = require('express');
 const { db } = require('../db');
 
 // Retrieve all users
 const retrieveAllUsers = async (req, res) => {
     try {
-        query = 'SELECT * FROM USER';
+        query = "SELECT * FROM USERS";
         const [users] = await db.query(query);
     
         return res.status(200).json({
-            status: 'success',
+            status: "success",
             results: users.length,
             data: users
         });
@@ -18,61 +19,59 @@ const retrieveAllUsers = async (req, res) => {
     }
 }
 
-// Create a new user
-const createUser = async(req, res) => {
-    const { name, email, role, password } = req.body;
-    if (!name || !email || !role || !password) {
+const createUser = async (req, res) => {
+    const {username, email, password, role} = req.body;
+
+    if (!username || !email || !password || !role){
         return res.status(400).json({
-            message: 'Please provide all required fields.'
-        });
+            message: "Please provide all required fields"
+        })
     }
 
-    // db insertion
-    const query = `
-        INSERT INTO USER (NAME, EMAIL, PASSWORD, ROLE)
-        VALUES ('${name}', '${email}', '${password}', '${role}')
+    const query = `INSERT INTO USERS (USERNAME, EMAIL, PASSWORD, ROLE)
+    VALUES('${username}', '${email}', '${password}', '${role}')
     `;
 
     try {
         const [result] = await db.query(query);
 
-        const createdUserQuery = `
-            SELECT * FROM USER WHERE ID = ${result.insertId}
-        `;
+        const createdUserQuery = `SELECT * FROM USERS WHERE ID = ${result.insertId}`;
+
         const [newUser] = await db.query(createdUserQuery);
-        
+
         return res.status(201).json({
-            message: 'User created successfully',
+            message: "User created successfully",
             data: newUser[0]
         });
-    } catch (error) {
+    } catch(error){
         return res.status(500).json({
-            message: 'Database error',
-        });
+            message: "Database error"
+        })
     }
-}
+}  
 
 // Retrieve a specific user by ID
 const retrieveUserById = async (req, res) => {
     const id = Number(req.params.id);
 
-    const query = `SELECT * FROM USER WHERE ID = ${id}`;
+    const query = `SELECT * FROM USERS WHERE ID = ${id}`;
 
     try {
         const [users] = await db.query(query);
 
         if (users.length === 0) {
             return res.status(404).json({
-                message: 'User not found'
+                message: "User not found"
             });
         }
         return res.status(200).json({
-            status: 'success',
-            data: user
+            status: "success",
+            data: users
         });
     } catch (error) {
         return res.status(500).json({
-            message: 'Database error',
+            error: error.message,
+            message: "Database error",
         });
     }
 }
@@ -80,31 +79,31 @@ const retrieveUserById = async (req, res) => {
 // Update a specific user by ID partial update
 const updateUserById = async (req, res) => {
     const id = Number(req.params.id);
-    const { name, email, password, role } = req.body;
+    const { username, email, password, role } = req.body;
 
-    if (!name && !email && !password && !role) {
+    if (!username && !email && !password && !role) {
         return res.status(400).json({
-            message: 'Please provide at least one field to update.'
+            message: "Please provide at least one field to update."
         });
     }
 
-    const selectQuery = `SELECT * FROM USER WHERE ID = ${id}`;
+    const selectQuery = `SELECT * FROM USERS WHERE ID = ${id}`;
     const [users] = await db.query(selectQuery);
 
     if (users.length === 0) {
         return res.status(404).json({
-            message: 'User not found'
+            message: "User not found"
         });
     }
 
-    const updatedName = name || users[0].NAME;
+    const updatedUsername = username || users[0].USERNAME;
     const updatedEmail = email || users[0].EMAIL;
     const updatedPassword = password || users[0].PASSWORD;
     const updatedRole = role || users[0].ROLE;
 
     const query = `
-        UPDATE USER
-        SET NAME = '${updatedName}',
+        UPDATE USERS
+        SET USERNAME = '${updatedUsername}',
             EMAIL = '${updatedEmail}',
             PASSWORD = '${updatedPassword}',
             ROLE = '${updatedRole}'
@@ -116,20 +115,20 @@ const updateUserById = async (req, res) => {
 
         if (result.affectedRows === 0) {
             return res.status(404).json({
-                message: 'User not found'
+                message: "User not found"
             });
         }
 
-        const updatedUserQuery = `SELECT * FROM USER WHERE ID = ${id}`;
+        const updatedUserQuery = `SELECT * FROM USERS WHERE ID = ${id}`;
         const [updatedUser] = await db.query(updatedUserQuery);
 
         return res.status(200).json({
-            message: 'User updated successfully',
+            message: "User updated successfully",
             data: updatedUser
         });
     } catch (error) {
         return res.status(500).json({
-            message: 'Database error',
+            message: "Database error",
         });
     }
 }
@@ -138,23 +137,23 @@ const updateUserById = async (req, res) => {
 const deleteUserById = async (req, res) => {
     const id = Number(req.params.id);
 
-    const query = `DELETE FROM USER WHERE ID = ${id}`;
+    const query = `DELETE FROM USERS WHERE ID = ${id}`;
 
     try {
         const [result] = await db.query(query);
 
         if (result.affectedRows === 0) {
             return res.status(404).json({
-                message: 'User not found'
+                message: "User not found"
             });
         }
 
         return res.status(200).json({
-            message: 'User deleted successfully'
+            message: "User deleted successfully"
         });
     } catch (error) {
         return res.status(500).json({
-            message: 'Database error',
+            message: "Database error",
         });
     }
 }
