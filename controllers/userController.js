@@ -1,10 +1,9 @@
-const e = require('express');
 const { db } = require('../db');
 
 // Retrieve all users
 const retrieveAllUsers = async (req, res) => {
     try {
-        query = "SELECT * FROM USERS";
+        const query = "SELECT * FROM USERS";
         const [users] = await db.query(query);
     
         return res.status(200).json({
@@ -14,18 +13,18 @@ const retrieveAllUsers = async (req, res) => {
         });
     } catch (error) {
         return res.status(500).json({
-            message: 'Database error',
+            message: "Database error",
         });
     }
-}
+};
 
 const createUser = async (req, res) => {
-    const {username, email, password, role} = req.body;
+    const { username, email, password, role } = req.body;
 
-    if (!username || !email || !password || !role){
+    if (!username || !email || !password || !role) {
         return res.status(400).json({
             message: "Please provide all required fields"
-        })
+        });
     }
 
     const query = `INSERT INTO USERS (USERNAME, EMAIL, PASSWORD, ROLE)
@@ -43,17 +42,16 @@ const createUser = async (req, res) => {
             message: "User created successfully",
             data: newUser[0]
         });
-    } catch(error){
+    } catch (error) {
         return res.status(500).json({
             message: "Database error"
-        })
+        });
     }
-}  
+};  
 
 // Retrieve a specific user by ID
 const retrieveUserById = async (req, res) => {
-    const id = Number(req.params.id);
-
+    const id = req.params.id;
     const query = `SELECT * FROM USERS WHERE ID = ${id}`;
 
     try {
@@ -64,17 +62,18 @@ const retrieveUserById = async (req, res) => {
                 message: "User not found"
             });
         }
+
         return res.status(200).json({
             status: "success",
             data: users
         });
+
     } catch (error) {
         return res.status(500).json({
-            error: error.message,
             message: "Database error",
         });
     }
-}
+};
 
 // Update a specific user by ID partial update
 const updateUserById = async (req, res) => {
@@ -126,17 +125,17 @@ const updateUserById = async (req, res) => {
             message: "User updated successfully",
             data: updatedUser
         });
+
     } catch (error) {
         return res.status(500).json({
             message: "Database error",
         });
     }
-}
+};
 
 // Delete a specific user by ID
 const deleteUserById = async (req, res) => {
     const id = Number(req.params.id);
-
     const query = `DELETE FROM USERS WHERE ID = ${id}`;
 
     try {
@@ -156,6 +155,32 @@ const deleteUserById = async (req, res) => {
             message: "Database error",
         });
     }
+};
+
+const getEmployeesAndManagers = async (req, res) => {
+    try {
+        const query = `SELECT
+            e.ID,
+            e.USERNAME AS Employee,
+            m.USERNAME AS Manager
+
+            FROM USERS AS e
+
+            LEFT JOIN USERS AS m
+                ON e.MANAGER_ID = m.ID;
+        `;
+        const [users] = await db.query(query);
+
+        return res.status(200).json({
+            status: "success",
+            results: users.length,
+            data: users
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: "Database error",
+        });
+    }
 }
 
 module.exports = {
@@ -163,5 +188,6 @@ module.exports = {
     createUser,
     retrieveUserById,
     updateUserById,
-    deleteUserById
+    deleteUserById,
+    getEmployeesAndManagers
 };
