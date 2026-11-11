@@ -1,4 +1,8 @@
+const bcrypt = require('bcrypt');
 const { db } = require('../db');
+const dotenv = require('dotenv');
+dotenv.config();
+
 const {
     sanitizeInput,
     validateRequired,
@@ -11,7 +15,6 @@ const registerUser = async (req, res) => {
 
     // 1. Clean input
     const cleanUsername = sanitizeInput(username);
-
     const cleanEmail = sanitizeInput(email);
 
     // Do NOT trim or lowercase passwords
@@ -51,23 +54,25 @@ const registerUser = async (req, res) => {
         });
     }
 
-    // 5. Insert user into database
-    const query = `
-        INSERT INTO USERS (USERNAME, EMAIL, PASSWORD)
-        VALUES ('${cleanUsername}', '${cleanEmail}', '${cleanPassword}')
-    `;
-
+    // 5. Hash password using bcrypt
     try {
-        const [result] = await db.query(query);
+        const hashedPassword = await bcrypt.hash(cleanPassword, 12);
 
-        const [newUser] = await db.query(
-            `SELECT ID, USERNAME, EMAIL, ROLE
-             FROM USERS WHERE ID = ${result.insertId}`
-        );
+        // 6. Parameterized query
+        const query = `
+            INSERT INTO USERS (USERNAME, EMAIL, PASSWORD, ROLE)
+            VALUES (?, ?, ?, ?)
+        `;
+
+        const [result] = await db.query(query, [
+            cleanUsername,
+            cleanEmail,
+            hashedPassword,
+            'user'
+        ]);
 
         return res.status(201).json({
-            message: 'User registered successfully',
-            data: newUser[0]
+            message: 'User registered successfully'
         });
 
     } catch (error) {
@@ -78,24 +83,32 @@ const registerUser = async (req, res) => {
         }
 
         return res.status(500).json({
-            message: 'Database error'
+            message: 'Registration error'
         });
     }
 };
 
 const loginUser = async (req, res) => {
     const { email, password } = req.body;
-    if (!email || !password) {
+
+    const cleanEmail = sanitizeInput(email);
+
+    if (!cleanEmail || !password) {
         return res.status(400).json({
             message: 'Please provide both email and password.'
         });
     }
+
+    // Parameterized query prevents SQL injection
     const query = `
-        SELECT * FROM USERS WHERE EMAIL = '${email}'
+        SELECT * FROM USERS WHERE EMAIL = ?
     `;
 
     try {
-        const [users] = await db.query(query);
+        const [users] = await db.query(query, [
+            cleanEmail
+        ]);
+
         if (users.length === 0) {
             return res.status(401).json({
                 message: 'Invalid email or password.'
@@ -103,7 +116,14 @@ const loginUser = async (req, res) => {
         }
 
         const user = users[0];
-        if (user.PASSWORD !== password) {
+
+        // Compare entered password with stored hash
+        const isMatch = await bcrypt.compare(
+            password,
+            user.PASSWORD
+        );
+
+        if (!isMatch) {
             return res.status(401).json({
                 message: 'Invalid email or password.'
             });
@@ -111,11 +131,17 @@ const loginUser = async (req, res) => {
 
         return res.status(200).json({
             message: 'User logged in successfully',
-            data: users[0]
+            user: {
+                id: user.ID,
+                username: user.USERNAME,
+                email: user.EMAIL,
+                role: user.ROLE
+            }
         });
+
     } catch (error) {
         return res.status(500).json({
-            message: 'Database error',
+            message: 'Login error'
         });
     }
 };

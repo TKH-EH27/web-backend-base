@@ -1,4 +1,5 @@
 const { db } = require('../db');
+const bcrypt = require('bcrypt');
 
 // Retrieve all users
 const retrieveAllUsers = async (req, res) => {
@@ -28,15 +29,24 @@ const createUser = async (req, res) => {
     }
 
     const query = `INSERT INTO USERS (USERNAME, EMAIL, PASSWORD, ROLE)
-    VALUES('${username}', '${email}', '${password}', '${role}')
+    VALUES(?, ?, ?, ?)
     `;
+    
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+        return res.status(400).json({
+            message: passwordError
+        });
+    }
 
     try {
-        const [result] = await db.query(query);
+        const hashedPassword = await bcrypt.hash(password, 12);
 
-        const createdUserQuery = `SELECT * FROM USERS WHERE ID = ${result.insertId}`;
+        const [result] = await db.query(query, [username, email, hashedPassword, role]);
 
-        const [newUser] = await db.query(createdUserQuery);
+        const createdUserQuery = `SELECT * FROM USERS WHERE ID = ?`;
+
+        const [newUser] = await db.query(createdUserQuery, [result.insertId]);
 
         return res.status(201).json({
             message: "User created successfully",
@@ -52,10 +62,12 @@ const createUser = async (req, res) => {
 // Retrieve a specific user by ID
 const retrieveUserById = async (req, res) => {
     const id = req.params.id;
-    const query = `SELECT * FROM USERS WHERE ID = ${id}`;
+    const query = `SELECT * FROM USERS WHERE ID = ?`;
+    console.log(query)
 
     try {
-        const [users] = await db.query(query);
+        const [users] = await db.query(query, [id]);
+        console.log(users);
 
         if (users.length === 0) {
             return res.status(404).json({
