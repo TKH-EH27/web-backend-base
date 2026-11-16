@@ -1,5 +1,8 @@
 const { db } = require('../db');
 const bcrypt = require('bcrypt');
+const {
+    validatePassword
+} = require('../utils/validators');
 
 // Retrieve all users
 const retrieveAllUsers = async (req, res) => {
@@ -53,6 +56,12 @@ const createUser = async (req, res) => {
             data: newUser[0]
         });
     } catch (error) {
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({
+                message: 'Email already exists'
+            });
+        }
+
         return res.status(500).json({
             message: "Database error"
         });

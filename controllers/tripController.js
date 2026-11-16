@@ -17,6 +17,30 @@ const retrieveAllTrips = async (req, res) => {
     }
 };
 
+const createTrip = async (req, res) => {
+    const { destination, country, cost } = req.body;
+
+    if (!destination || !country || !cost) {
+        return res.status(400).json({
+            message: "Please provide all required fields"
+        });
+    }
+
+    try {
+        const query = `INSERT INTO TRIPS (DESTINATION, COUNTRY, COST) VALUES (?, ?, ?)`;
+        const [result] = await db.query(query, [destination, country, cost]);
+
+        return res.status(201).json({
+            message: "Trip created successfully",
+            data: result
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: "Database error"
+        });
+    }
+};
+
 const retrieveTripById = async (req, res) => {
     const id = Number(req.params.id);
 
@@ -66,7 +90,7 @@ const getLastViewedTrip = async (req, res) => {
     }
 
     try {
-        const query = "SELECT * FROM TRIP WHERE ID = ?";
+        const query = "SELECT * FROM TRIPS WHERE ID = ?";
         const [trips] = await db.query(query, [id]);
 
         if (trips.length === 0) {
@@ -122,6 +146,7 @@ const allTripsWithRatings = async (req, res) => {
 };
 
 module.exports = { 
+  createTrip,
   retrieveAllTrips, 
   retrieveTripById,
   getLastViewedTrip,

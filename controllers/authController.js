@@ -1,14 +1,16 @@
+const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const { db } = require('../db');
 const dotenv = require('dotenv');
-dotenv.config();
-
 const {
     sanitizeInput,
     validateRequired,
     validateEmail,
     validatePassword
 } = require('../utils/validators');
+const signToken = require('../utils/signToken')
+
+dotenv.config();
 
 const registerUser = async (req, res) => {
     const { username, email, password } = req.body;
@@ -71,8 +73,20 @@ const registerUser = async (req, res) => {
             'user'
         ]);
 
+        // create token
+        const token = signToken(result.insertId, 'user');
+
+        // set token in cookie
+        res.cookie('jwt', token, {
+            httpOnly: true,
+            secure: true, 
+            sameSite: 'lax', // Adjust based on your needs
+            maxAge: 60 * 60 * 1000 // 1 hour
+        });
+
         return res.status(201).json({
-            message: 'User registered successfully'
+            message: 'User registered successfully',
+            token: token
         });
 
     } catch (error) {
@@ -128,6 +142,17 @@ const loginUser = async (req, res) => {
                 message: 'Invalid email or password.'
             });
         }
+
+        // create token
+        const token = signToken(user.ID, user.ROLE);
+
+        // Set token in cookie
+        res.cookie('jwt', token, {
+            httpOnly: true,
+            secure: true, 
+            sameSite: 'lax', 
+            maxAge: 60 * 60 * 1000 // 1 hour
+        });
 
         return res.status(200).json({
             message: 'User logged in successfully',

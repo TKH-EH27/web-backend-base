@@ -8,7 +8,11 @@ const {
   getEmployeesAndManagers
 } = require('../controllers/userController');
 
+const { verifyAdmin } = require('../middlewares/authMiddlewares');
+
 const userRouter = express.Router();
+
+userRouter.use(verifyAdmin);
 
 // All users
 userRouter.post('/', createUser)        // Add new user
